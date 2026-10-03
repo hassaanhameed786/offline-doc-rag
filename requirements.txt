@@ -1,0 +1,5 @@
+sentence-transformers>=3.0
+numpy>=1.26
+anthropic>=0.40
+python-dotenv>=1.0
+pypdf>=4.0
