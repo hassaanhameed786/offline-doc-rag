@@ -6,10 +6,15 @@ import os
 from pathlib import Path
 
 import numpy as np
+from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
+load_dotenv()
+
 EMBED_MODEL = "all-MiniLM-L6-v2"
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")  # "ollama" or "anthropic"
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-5-5")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 INDEX_DIR = Path("index")
 
 SYSTEM_PROMPT = (
@@ -47,7 +52,7 @@ def load_documents(data_dir: str = "data") -> list[dict]:
 
 
 # ---------- 2. Chunk ----------
-def chunk_text(text: str, size: int = 200, overlap: int = 40) -> list[str]:
+def chunk_text(text: str, size: int = 100, overlap: int = 20) -> list[str]:
     """Split text into overlapping chunks of ~`size` words."""
     words = text.split()
     step = size - overlap
@@ -89,18 +94,31 @@ class Retriever:
 
 # ---------- 5. Generate ----------
 def generate_answer(question: str, hits: list[dict]) -> str:
-    import anthropic
-
     context = "\n\n".join(
         f"[{i}] (source: {h['source']})\n{h['text']}" for i, h in enumerate(hits, 1)
     )
-    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
-    response = client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=800,
-        system=SYSTEM_PROMPT,
+    user_msg = f"Context:\n{context}\n\nQuestion: {question}"
+
+    if LLM_PROVIDER == "anthropic":
+        import anthropic
+
+        client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+        response = client.messages.create(
+            model=LLM_MODEL,
+            max_tokens=800,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        return response.content[0].text
+
+    import ollama
+
+    response = ollama.chat(
+        model=OLLAMA_MODEL,
         messages=[
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"}
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
         ],
+        options={"temperature": 0},  # more factual, less creative
     )
-    return response.content[0].text
+    return response["message"]["content"]

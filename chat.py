@@ -1,18 +1,23 @@
 """Interactive CLI: ask questions about your documents."""
 import os
 
-from dotenv import load_dotenv
+from rag import LLM_PROVIDER, OLLAMA_MODEL, Retriever, generate_answer
 
-from rag import Retriever, generate_answer
 
-load_dotenv()
+def llm_available() -> bool:
+    if LLM_PROVIDER == "anthropic":
+        return bool(os.getenv("ANTHROPIC_API_KEY"))
+    return True  # Ollama needs no API key
 
 
 def main() -> None:
     retriever = Retriever()
-    use_llm = bool(os.getenv("ANTHROPIC_API_KEY"))
-    if not use_llm:
-        print("(No ANTHROPIC_API_KEY found - showing retrieved chunks only.)")
+    use_llm = llm_available()
+    if use_llm:
+        model = OLLAMA_MODEL if LLM_PROVIDER == "ollama" else "claude"
+        print(f"Using {LLM_PROVIDER} ({model})")
+    else:
+        print("(LLM_PROVIDER=anthropic but no ANTHROPIC_API_KEY - showing chunks only.)")
     print("Ask a question (type 'exit' to quit)\n")
 
     while True:
@@ -21,10 +26,14 @@ def main() -> None:
             break
         hits = retriever.search(question)
         if use_llm:
-            print(f"\nAnswer: {generate_answer(question, hits)}\n")
+            try:
+                print(f"\nAnswer: {generate_answer(question, hits)}\n")
+            except Exception as e:
+                print(f"\n[LLM error: {e}]")
+                print("If using Ollama, make sure it is running: ollama serve\n")
         print("Sources:")
         for i, h in enumerate(hits, 1):
-            print(f"  [{i}] {h['source']} (score {h['score']:.2f}): {h['text'][:100]}...")
+            print(f"  [{i}] {h['source']} (score {h['score']:.2f}): {h['text'][:300]}...")
         print()
 
 
