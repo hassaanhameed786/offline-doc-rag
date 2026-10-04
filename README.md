@@ -185,18 +185,11 @@ This project is a command-line tool, so it has no HTTP endpoints yet (see Future
 ## Future Work
 
 - [ ] FastAPI service with `/ingest` and `/ask` endpoints
-- [ ] Web UI with Streamlit or Gradio
 - [ ] Evaluation script that reports retrieval hit rate and answer faithfulness
 - [ ] Heading-aware and paragraph-aware chunking
 - [ ] Hybrid search (BM25 plus vectors) and re-ranking
-- [ ] Swap NumPy for FAISS or Chroma for larger collections
-- [ ] Conversation memory for follow-up questions
 - [ ] Agentic RAG with query rewriting and multi-step retrieval
-- [ ] Optional embeddings through Ollama (`nomic-embed-text`)
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
