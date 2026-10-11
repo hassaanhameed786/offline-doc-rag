@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>offline-doc-rag: chat with your documents, offline</title>
+<meta name="description" content="A lightweight RAG pipeline that answers questions about your own files with cited sources. Runs locally with Ollama and Hugging Face embeddings.">
+<meta property="og:title" content="offline-doc-rag: chat with your documents, offline">
+<meta property="og:description" content="A lightweight RAG pipeline with cited answers, running locally with Ollama and Hugging Face embeddings.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔎</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F4EF; --surface:#FBFCF9; --ink:#17262B; --text:#34464A; --muted:#586A6C;
+  --rule:#D3DAD4; --teal:#1F6F6A; --teal-deep:#154B48; --mark:rgba(255,216,77,.6);
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--text);font:400 1.0625rem/1.6 var(--body)}
+a{color:var(--teal-deep)}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--display);color:var(--ink);margin:0}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+.brand{font:700 1.15rem var(--display);color:var(--ink);text-decoration:none}
+.top a.gh{font-weight:600;text-decoration:none;color:var(--ink);border-bottom:2px solid var(--teal)}
+
+/* hero */
+.hero{padding:48px 0 8px}
+.hero h1{font-size:clamp(2.5rem,6.4vw,4.4rem);line-height:1.02;letter-spacing:-.025em;font-weight:700;max-width:14ch}
+.lede{max-width:60ch;margin:22px 0 0;font-size:1.2rem}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-block;padding:12px 20px;border-radius:6px;font-weight:600;text-decoration:none}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-deep)}
+.btn-ghost{border:1.5px solid var(--ink);color:var(--ink)}
+.btn-ghost:hover{background:var(--ink);color:#fff}
+
+/* demo */
+.demo{background:var(--surface);border:1px solid var(--rule);border-radius:12px;margin-top:44px;overflow:hidden}
+.demo-head{padding:16px 22px;border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between;align-items:baseline}
+.demo-head strong{font:700 1.05rem var(--display);color:var(--ink)}
+.demo-head span{font-size:.92rem;color:var(--muted)}
+.demo-body{padding:22px}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);padding:8px 14px;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 22px;padding:0;list-style:none}
+.step{font-size:.9rem;padding:4px 10px;border-radius:4px;border:1px solid var(--rule);color:var(--muted)}
+.step.active{border-color:var(--teal);color:var(--teal-deep)}
+.step.done{background:var(--teal);border-color:var(--teal);color:#fff}
+.chunks{list-style:none;margin:0;padding:0;display:grid;gap:16px;min-height:120px}
+.chunk{display:grid;grid-template-columns:2.2rem minmax(0,1fr)}
+.rank{font:500 .9rem var(--mono);color:var(--muted);padding-top:2px}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.src{font:400 .85rem var(--mono);color:var(--ink)}
+.bar{flex:0 0 140px;height:8px;background:var(--rule);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--teal);transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.score{font:500 .85rem var(--mono);color:var(--teal-deep)}
+.snip{margin:6px 0 0;font-size:.97rem;color:var(--text)}
+mark{background:var(--mark);color:inherit;padding:0 2px;border-radius:2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.legend{margin:18px 0 0;font-size:.88rem;color:var(--muted)}
+.answer{margin-top:22px;padding:16px 18px;border-left:4px solid var(--teal);background:var(--paper);border-radius:0 8px 8px 0;min-height:5.5em}
+.answer b{display:block;font:700 .95rem var(--display);color:var(--ink);margin-bottom:4px}
+.cite{font:500 .85em var(--mono);color:var(--teal-deep)}
+
+/* sections */
+section{padding:68px 0;border-top:1px solid var(--rule)}
+.hero + section{margin-top:52px}
+h2{font-size:clamp(1.7rem,3.4vw,2.2rem);letter-spacing:-.015em;line-height:1.15}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:40px}
+.split p{margin:12px 0 0;max-width:34ch;color:var(--muted)}
+.flow{list-style:none;margin:0;padding:0;display:grid;gap:26px;counter-reset:s}
+.flow li{display:grid;grid-template-columns:2.4rem minmax(0,1fr);counter-increment:s}
+.flow li::before{content:counter(s);font:500 1.1rem var(--mono);color:var(--teal-deep)}
+.flow h3{font-size:1.15rem}
+.flow p{margin:4px 0 0;max-width:62ch}
+.tablewrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:.98rem;min-width:520px}
+.tbl th,.tbl td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl th{font:700 .95rem var(--display);color:var(--ink)}
+.tbl td:first-child{font-weight:600;color:var(--ink);white-space:nowrap}
+.principles{margin:0}
+.principles div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:24px;padding:16px 0;border-bottom:1px solid var(--rule)}
+.principles dt{font:700 1.05rem var(--display);color:var(--ink)}
+.principles dd{margin:0;max-width:62ch}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{font:inherit;padding:6px 12px;border:0;border-bottom:2px solid transparent;background:none;cursor:pointer;color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--teal)}
+.codebox{position:relative}
+.code{margin:0;background:var(--ink);color:#E6EFEC;border-radius:8px;padding:20px;overflow-x:auto;font:400 .9rem/1.75 var(--mono)}
+.copy{position:absolute;top:10px;right:10px;font:500 .8rem var(--body);color:#E6EFEC;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:4px 10px;cursor:pointer}
+.copy:hover{background:rgba(255,255,255,.22)}
+.note{margin:16px 0 0;max-width:70ch;color:var(--muted);font-size:.97rem}
+.note code,.tbl code{font:400 .88em var(--mono);background:#E4E9E4;padding:1px 5px;border-radius:3px;color:var(--ink)}
+.uses{margin:0;padding-left:1.2rem;max-width:62ch}
+.uses li{margin:0 0 10px}
+.road{list-style:none;margin:0;padding:0;display:grid;gap:12px 32px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.road li::before{content:"";display:inline-block;width:14px;height:14px;border:1.5px solid var(--muted);border-radius:3px;margin-right:10px;vertical-align:-2px}
+footer{border-top:1px solid var(--rule);padding:40px 0 72px;color:var(--muted)}
+footer p{margin:0 0 8px;max-width:70ch}
+
+@media (max-width:800px){
+  .split,.principles div{grid-template-columns:1fr;gap:10px}
+  .split p{max-width:60ch}
+  .bar{flex-basis:100px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .bar i{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">offline-doc-rag</a>
+    <a class="gh" href="https://github.com/hassaanhameed786/offline-doc-rag">GitHub repository</a>
+  </header>
+
+  <main>
+  <div class="hero">
+    <h1>Chat with your documents. Offline.</h1>
+    <p class="lede">A lightweight RAG pipeline that answers questions about your own files and cites its sources. It runs on your laptop with Ollama and Hugging Face embeddings, or switches to Claude with one setting.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="https://github.com/hassaanhameed786/offline-doc-rag">View on GitHub</a>
+      <a class="btn btn-ghost" href="#run">Run it locally</a>
+    </div>
+
+    <div class="demo" aria-labelledby="demo-title">
+      <div class="demo-head">
+        <strong id="demo-title">See a question go through the pipeline</strong>
+        <span>Recorded from a real run: llama3.2 on Ollama, CPU only</span>
+      </div>
+      <div class="demo-body">
+        <div class="chips" id="chips" role="group" aria-label="Choose a question"></div>
+        <ol class="steps" id="steps">
+          <li class="step">Embed the question</li>
+          <li class="step">Find similar chunks</li>
+          <li class="step">Write the answer</li>
+        </ol>
+        <div aria-live="polite">
+          <ul class="chunks" id="chunks"></ul>
+          <p class="legend">Highlighted text has a similarity score of 0.5 or higher. Bars show each chunk's cosine similarity to the question.</p>
+          <div class="answer"><b>Answer</b><span id="answer"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="split">
+      <div>
+        <h2>How it works</h2>
+        <p>Index once, then retrieve and answer for every question.</p>
+      </div>
+      <ol class="flow">
+        <li><div><h3>Index your files</h3><p>PDF, Markdown and text files are split into overlapping chunks of about 100 words. Each chunk becomes a vector from the Hugging Face model all-MiniLM-L6-v2, saved to a local index.</p></div></li>
+        <li><div><h3>Retrieve the closest chunks</h3><p>Your question is embedded the same way. Cosine similarity over the index returns the four chunks closest in meaning.</p></div></li>
+        <li><div><h3>Generate a grounded answer</h3><p>The question and chunks go to the model with one rule: answer only from this context, cite sources, and say "I don't know" if the answer isn't there.</p></div></li>
+        <li><div><h3>Show the evidence</h3><p>The answer streams back with the source chunks and their scores, so you can check every claim.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="parts">
+    <div class="split">
+      <div>
+        <h2>What's inside</h2>
+        <p>Seven small parts, each easy to swap.</p>
+      </div>
+      <div class="tablewrap">
+        <table class="tbl">
+          <thead><tr><th>Part</th><th>Technology</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Loader</td><td>pypdf, plain file reading</td><td>Reads <code>.pdf</code>, <code>.md</code> and <code>.txt</code> files from <code>data/</code></td></tr>
+            <tr><td>Chunker</td><td>Custom word-based splitter</td><td>100-word chunks with 20 words of overlap</td></tr>
+            <tr><td>Embedder</td><td>Hugging Face sentence-transformers</td><td>Turns text into normalized vectors, locally and free</td></tr>
+            <tr><td>Vector index</td><td>NumPy</td><td>Stores vectors; search is one matrix multiply</td></tr>
+            <tr><td>Retriever</td><td>Cosine similarity, top 4</td><td>Finds the chunks most relevant to the question</td></tr>
+            <tr><td>Generator</td><td>Ollama (llama3.2) or Claude</td><td>Writes the cited answer</td></tr>
+            <tr><td>Interface</td><td>Command line</td><td>Streams answers with sources and scores</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="principles">
+    <div class="split">
+      <div>
+        <h2>Design principles</h2>
+      </div>
+      <dl class="principles">
+        <div><dt>Local first</dt><dd>Documents and questions stay on your machine when you use Ollama.</dd></div>
+        <div><dt>Grounded answers</dt><dd>The model answers from retrieved text only, cites it, and admits when it doesn't know.</dd></div>
+        <div><dt>Small enough to read</dt><dd>About 100 lines of core logic and no vector database, so every step is visible.</dd></div>
+        <div><dt>Swappable models</dt><dd>One environment variable switches between Ollama and Claude.</dd></div>
+        <div><dt>Visible retrieval</dt><dd>Every answer lists its source chunks and scores, which makes weak retrieval easy to spot and fix.</dd></div>
+        <div><dt>Quick to respond</dt><dd>The embedding model preloads at startup and answers stream word by word.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="run">
+    <div class="split">
+      <div>
+        <h2>Run it locally</h2>
+        <p>You need Python 3.10 or newer and Ollama installed.</p>
+      </div>
+      <div>
+        <div class="tabs" role="tablist" aria-label="Operating system">
+          <button class="tab" role="tab" id="tab-win" aria-selected="true" aria-controls="code-win">Windows PowerShell</button>
+          <button class="tab" role="tab" id="tab-nix" aria-selected="false" aria-controls="code-nix">macOS and Linux</button>
+        </div>
+        <div class="codebox" id="code-win" role="tabpanel" aria-labelledby="tab-win">
+          <button class="copy" type="button">Copy</button>
+<pre class="code"><code>git clone https://github.com/hassaanhameed786/offline-doc-rag.git
+cd offline-doc-rag
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+ollama pull llama3.2
+python ingest.py
+python chat.py</code></pre>
+        </div>
+        <div class="codebox" id="code-nix" role="tabpanel" aria-labelledby="tab-nix" hidden>
+          <button class="copy" type="button">Copy</button>
+<pre class="code"><code>git clone https://github.com/hassaanhameed786/offline-doc-rag.git
+cd offline-doc-rag
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+ollama pull llama3.2
+python ingest.py
+python chat.py</code></pre>
+        </div>
+        <p class="note">Put your <code>.md</code>, <code>.txt</code> or <code>.pdf</code> files in <code>data/</code> before running <code>ingest.py</code>, and re-run it whenever they change. If Ollama isn't already running, start it with <code>ollama serve</code>.</p>
+        <p class="note">Settings live in <code>.env</code>: <code>LLM_PROVIDER</code> (<code>ollama</code> or <code>anthropic</code>), <code>OLLAMA_MODEL</code>, and <code>ANTHROPIC_API_KEY</code> if you choose Claude.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="uses">
+    <div class="split">
+      <div>
+        <h2>Where it fits</h2>
+        <p>Anywhere answers must come from a specific set of documents.</p>
+      </div>
+      <div>
+        <ul class="uses">
+          <li>A personal knowledge base for notes, papers and study material.</li>
+          <li>Questions across a set of resumes or project write-ups.</li>
+          <li>Search over policies, handbooks and onboarding guides.</li>
+          <li>Support answers drawn from FAQs and product manuals.</li>
+          <li>Contracts or financial files that can't be sent to a third-party API.</li>
+        </ul>
+        <p class="note">The impact: less time spent searching, fewer made-up answers because every claim points to a source, no per-token cost, and private files that stay on your own machine.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="next">
+    <div class="split">
+      <div>
+        <h2>What's next</h2>
+        <p>This is single-pass RAG: it retrieves once and answers once. These are the planned upgrades.</p>
+      </div>
+      <ul class="road">
+        <li>FastAPI service with ingest and ask endpoints</li>
+        <li>Web interface with Streamlit or Gradio</li>
+        <li>Evaluation script for hit rate and faithfulness</li>
+        <li>Heading-aware chunking</li>
+        <li>Hybrid search and re-ranking</li>
+        <li>FAISS or Chroma for larger collections</li>
+        <li>Conversation memory for follow-up questions</li>
+        <li>Agentic retrieval with query rewriting</li>
+      </ul>
+    </div>
+  </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Built by <strong>[Your Name]</strong>, [one-line description of yourself].</p>
+    <p>Released under the <a href="https://github.com/hassaanhameed786/offline-doc-rag/blob/main/LICENSE">MIT License</a>.</p>
+  </div>
+</footer>
+
+<script>
+const DEMOS = [
+  {
+    q: "What was Google's original search engine called?",
+    chunks: [
+      {src:"google_overview.md", score:0.66, text:`# Google: A Company Overview ## Origins Google began as a research project at Stanford University in the mid-1990s. Two PhD students, Larry Page and Sergey Brin, wanted to find a better way to rank pages on the early web. Their first search engine was nicknamed BackRub, because it analyzed the links...`},
+      {src:"google_overview.md", score:0.59, text:`that received links from many important pages were ranked higher than pages that were rarely referenced. In 1998 the pair incorporated the company and renamed it Google, a play on the word "googol", which is the number one followed by one hundred zeros. The name reflected their goal of organizing a ...`},
+      {src:"google_overview.md", score:0.56, text:`Googleplex, is still located. ## Early growth and the business model Google grew quickly because its search results felt more relevant than those of competitors, and its homepage was famously plain and fast to load. The company needed a way to pay for its servers and staff. It found one in advertisi...`},
+      {src:"google_overview.md", score:0.51, text:`Google launched a series of products that went far beyond web search. Gmail arrived in April 2004 with a gigabyte of free storage, which was enormous at the time, since competing email services offered only a few megabytes. Google Maps launched in 2005 and brought smooth, draggable maps to the brows...`}
+    ],
+    answer: `According to [1], Google's original search engine was nicknamed "BackRub".`
+  },
+  {
+    q: "What was PageRank based on?",
+    chunks: [
+      {src:"google_overview.md", score:0.68, text:`# Google: A Company Overview ## Origins Google began as a research project at Stanford University in the mid-1990s. Two PhD students, Larry Page and Sergey Brin, wanted to find a better way to rank pages on the early web. Their first search engine was nicknamed BackRub, because it analyzed the links...`},
+      {src:"google_overview.md", score:0.35, text:`bring down the entire browser. Chrome grew to become the most popular browser on desktop and mobile. Its open-source foundation, Chromium, also powers several other browsers. ## Alphabet and the "other bets" In 2015 Google reorganized itself under a new parent company named Alphabet. Google remained...`},
+      {src:"google_overview.md", score:0.30, text:`Googleplex, is still located. ## Early growth and the business model Google grew quickly because its search results felt more relevant than those of competitors, and its homepage was famously plain and fast to load. The company needed a way to pay for its servers and staff. It found one in advertisi...`},
+      {src:"sample.md", score:0.27, text:`(keyword + vector), re-ranking retrieved chunks, metadata filtering, and evaluation with question/answer test sets all improve quality in production systems....`}
+    ],
+    answer: `According to the context [1], PageRank was based on an algorithm that treated a link from one page to another as a vote of confidence. Specifically, it analyzed the links pointing back to a page and ranked pages higher if they received links from many important pages.`
+  }
+];
+
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+const chipsEl = document.getElementById("chips");
+const stepsEl = [...document.querySelectorAll("#steps .step")];
+const chunksEl = document.getElementById("chunks");
+const answerEl = document.getElementById("answer");
+let runId = 0;
+
+DEMOS.forEach((d, i) => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button"; b.textContent = d.q;
+  b.setAttribute("aria-pressed", "false");
+  b.addEventListener("click", () => run(i, true));
+  chipsEl.appendChild(b);
+});
+
+function setSteps(active) {
+  stepsEl.forEach((s, i) => {
+    s.classList.toggle("done", i < active);
+    s.classList.toggle("active", i === active);
+  });
+}
+
+function buildChunk(c, n) {
+  const li = document.createElement("li"); li.className = "chunk";
+  const rank = document.createElement("span"); rank.className = "rank"; rank.textContent = "[" + n + "]";
+  const body = document.createElement("div");
+  const meta = document.createElement("div"); meta.className = "meta";
+  const src = document.createElement("span"); src.className = "src"; src.textContent = c.src;
+  const bar = document.createElement("span"); bar.className = "bar";
+  const fill = document.createElement("i"); bar.appendChild(fill);
+  const score = document.createElement("span"); score.className = "score"; score.textContent = c.score.toFixed(2);
+  meta.append(src, bar, score);
+  const snip = document.createElement("p"); snip.className = "snip";
+  if (c.score >= 0.5) { const m = document.createElement("mark"); m.textContent = c.text; snip.appendChild(m); }
+  else snip.textContent = c.text;
+  body.append(meta, snip);
+  li.append(rank, body);
+  return {li, fill, width: Math.round(c.score * 100)};
+}
+
+async function run(i, animate) {
+  const id = ++runId, d = DEMOS[i];
+  [...chipsEl.children].forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+  chunksEl.innerHTML = ""; answerEl.textContent = "";
+  if (!animate || reduce) {
+    d.chunks.forEach((c, n) => { const r = buildChunk(c, n + 1); chunksEl.appendChild(r.li); r.fill.style.width = r.width + "%"; });
+    renderAnswer(d.answer, true); setSteps(3); return;
+  }
+  setSteps(0); await wait(600); if (id !== runId) return;
+  setSteps(1);
+  const rows = d.chunks.map((c, n) => buildChunk(c, n + 1));
+  for (const r of rows) {
+    chunksEl.appendChild(r.li);
+    requestAnimationFrame(() => requestAnimationFrame(() => { r.fill.style.width = r.width + "%"; }));
+    await wait(350); if (id !== runId) return;
+  }
+  await wait(500); if (id !== runId) return;
+  setSteps(2);
+  await renderAnswer(d.answer, false, id);
+  if (id === runId) setSteps(3);
+}
+
+async function renderAnswer(text, instant, id) {
+  answerEl.textContent = "";
+  const words = text.split(" ");
+  for (const w of words) {
+    if (!instant && id !== runId) return;
+    const s = document.createElement("span");
+    if (/\[\d+\]/.test(w)) s.className = "cite";
+    s.textContent = w + " ";
+    answerEl.appendChild(s);
+    if (!instant) await wait(55);
+  }
+}
+
+run(0, false);
+
+/* tabs */
+const tabs = [...document.querySelectorAll(".tab")];
+tabs.forEach(t => t.addEventListener("click", () => {
+  tabs.forEach(o => {
+    const on = o === t;
+    o.setAttribute("aria-selected", String(on));
+    document.getElementById(o.getAttribute("aria-controls")).hidden = !on;
+  });
+}));
+
+/* copy buttons */
+document.querySelectorAll(".copy").forEach(btn => btn.addEventListener("click", async () => {
+  const text = btn.parentElement.querySelector("code").innerText;
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+  catch (e) { btn.textContent = "Press Ctrl+C"; }
+  setTimeout(() => { btn.textContent = "Copy"; }, 1800);
+}));
+</script>
+</body>
+</html>

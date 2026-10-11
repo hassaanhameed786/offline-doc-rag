@@ -1,4 +1,4 @@
-# Doc-RAG: Chat With Your Documents, Fully Offline
+# Offline Doc-RAG: Chat With Your Documents, Fully Offline
 
 > A lightweight Retrieval-Augmented Generation (RAG) pipeline that answers questions about your own documents and cites its sources.
 > Runs 100% locally with Ollama and Hugging Face embeddings, or switch to Claude with a single setting.
@@ -62,8 +62,8 @@ flowchart LR
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-username>/doc-rag.git
-cd doc-rag
+git clone https://github.com/hassaanhameed786/offline-doc-rag.git
+cd offline-doc-rag
 python -m venv .venv
 ```
 
@@ -148,7 +148,7 @@ Sources:
 ## Project Structure
 
 ```
-doc-rag/
+offline-doc-rag/
 ├── data/               # Your documents (.md, .txt, .pdf)
 ├── index/              # Generated vector index (git-ignored)
 ├── rag.py              # Core pipeline: load, chunk, embed, retrieve, generate
@@ -185,12 +185,19 @@ This project is a command-line tool, so it has no HTTP endpoints yet (see Future
 ## Future Work
 
 - [ ] FastAPI service with `/ingest` and `/ask` endpoints
+- [ ] Web UI with Streamlit or Gradio
 - [ ] Evaluation script that reports retrieval hit rate and answer faithfulness
 - [ ] Heading-aware and paragraph-aware chunking
 - [ ] Hybrid search (BM25 plus vectors) and re-ranking
+- [ ] Swap NumPy for FAISS or Chroma for larger collections
+- [ ] Conversation memory for follow-up questions
 - [ ] Agentic RAG with query rewriting and multi-step retrieval
+- [ ] Optional embeddings through Ollama (`nomic-embed-text`)
 
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-Built by Hassaan Hameed, an AI engineer building practical AI systems and intelligent software.
+Built by **[Your Name]**, [one-line description of yourself, e.g. "an aspiring AI engineer exploring practical, privacy-first LLM applications"].
