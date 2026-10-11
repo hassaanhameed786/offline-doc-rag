@@ -200,4 +200,10 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-Built by Hassaan Hameed, an AI engineer exploring practical RAG systems, LLM applications, and context-aware AI solutions for real-world problems.
+Built by **Hassaan Hameed** — an AI engineer exploring Retrieval-Augmented Generation (RAG), LLM applications, and practical AI systems. Outside of tech, I enjoy nature, hiking, and photography.
+
+**Connect with me**
+
+- [LinkedIn](https://www.linkedin.com/in/hassaanhameed786/)
+- [Medium](https://medium.com/@hassaanhameed786)
+- [Instagram @hcclicks](https://www.instagram.com/hcclicks/)
