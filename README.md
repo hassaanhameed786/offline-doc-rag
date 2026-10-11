@@ -200,4 +200,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-Built by **[Your Name]**, [one-line description of yourself, e.g. "an aspiring AI engineer exploring practical, privacy-first LLM applications"].
+Built by Hassaan Hameed, an AI engineer exploring practical RAG systems, LLM applications, and context-aware AI solutions for real-world problems.
